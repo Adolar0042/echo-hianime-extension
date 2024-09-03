@@ -6,6 +6,7 @@ import dev.brahmkshatriya.echo.common.clients.HomeFeedClient
 import dev.brahmkshatriya.echo.common.clients.RadioClient
 import dev.brahmkshatriya.echo.common.clients.SearchClient
 import dev.brahmkshatriya.echo.common.clients.TrackClient
+import dev.brahmkshatriya.echo.common.models.Album
 import dev.brahmkshatriya.echo.common.models.EchoMediaItem
 import dev.brahmkshatriya.echo.common.models.MediaItemsContainer
 import dev.brahmkshatriya.echo.common.models.Track
@@ -25,8 +26,8 @@ import kotlin.system.measureTimeMillis
 @OptIn(DelicateCoroutinesApi::class)
 @ExperimentalCoroutinesApi
 class ExtensionUnitTest {
-    private val extension: ExtensionClient = TestExtension()
-    private val searchQuery = "Skrillex"
+    private val extension: ExtensionClient = HiAnimeExtension()
+    private val searchQuery = "eighty"
 
     private val mainThreadSurrogate = newSingleThreadContext("UI thread")
 
@@ -136,6 +137,22 @@ class ExtensionUnitTest {
         return track ?: error("Track not found, try a different search query")
     }
 
+    private suspend fun searchAnime(q: String? = null): Album {
+        if (extension !is SearchClient) error("SearchClient is not implemented")
+        val query = q ?: searchQuery
+        println("Searching  : $query")
+        val items = extension.searchFeed(query, null).loadFirst()
+        val track = items.firstNotNullOfOrNull {
+            val item = when (it) {
+                is MediaItemsContainer.Item -> it.media
+                is MediaItemsContainer.Category -> it.list.firstOrNull()
+                else -> null
+            }
+            (item as? EchoMediaItem.Lists.AlbumItem?)
+        }
+        return track?.album ?: error("Track not found, try a different search query")
+    }
+
     @Test
     fun testTrackGet() = testIn("Testing Track Get") {
         if (extension !is TrackClient) error("TrackClient is not implemented")
@@ -154,7 +171,7 @@ class ExtensionUnitTest {
             val track = extension.loadTrack(search)
             val streamable = track.audioStreamables.firstOrNull()
                 ?: error("Track is not streamable")
-            val stream = extension.getStreamableAudio(streamable)
+            val stream = extension.getStreamableMedia(streamable)
             println(stream)
         }.also { println("time : $it") }
     }
@@ -183,13 +200,17 @@ class ExtensionUnitTest {
 
     @Test
     fun testAlbumGet() = testIn("Testing Album Get") {
-        if (extension !is TrackClient) error("TrackClient is not implemented")
-        val small = extension.loadTrack(searchTrack()).album ?: error("Track has no album")
         if (extension !is AlbumClient) error("AlbumClient is not implemented")
-        val album = extension.loadAlbum(small)
+        val album = extension.loadAlbum(searchAnime())
         println(album)
-        val mediaItems = extension.getMediaItems(album).loadFirst()
-        mediaItems.forEach {
+        val tracks = extension.loadTracks(album).loadAll()
+        tracks.forEach {
+            println(it)
+        }
+        if (extension !is TrackClient) error("TrackClient is not implemented")
+        val track = extension.loadTrack(tracks.first())
+        println(track)
+        track.mediaStreamables.forEach {
             println(it)
         }
     }

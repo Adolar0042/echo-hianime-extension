@@ -1,10 +1,12 @@
 import java.io.ByteArrayOutputStream
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     id("java-library")
     id("org.jetbrains.kotlin.jvm")
     id("com.gradleup.shadow") version "8.3.0"
+    kotlin("plugin.serialization") version "1.9.22"
 }
 
 java {
@@ -13,12 +15,18 @@ java {
 }
 
 kotlin {
-    jvmToolchain(17)
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_17
+    }
 }
 
 dependencies {
     val libVersion: String by project
     compileOnly("com.github.brahmkshatriya:echo:$libVersion")
+    api("com.github.Blatzar:NiceHttp:0.4.11")
+
+    api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1")
+    api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
